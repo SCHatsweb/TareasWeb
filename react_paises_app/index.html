@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InfoPaíses React</title>
+    <!-- Cargamos estilos (Bootstrap) y librerías de React desde internet (CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/react-router-dom@5.3.4/umd/react-router-dom.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body { background-color: #ffffff; }
+        .navbar { background: #fff !important; border-bottom: 1px solid #e5e7eb; }
+        .navbar-brand { font-weight: 600; }
+        .nav-link { color: #374151; }
+        .nav-link.active { background: #2563eb; color: #fff !important; border-radius: 999px; }
+        .hero-title { font-weight: 700; font-size: 2.25rem; }
+        .flag { width: 48px; height: 32px; object-fit: cover; border-radius: 6px; border: 1px solid #e5e7eb; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // Importamos herramientas de React Router y React
+        const { HashRouter, Switch, Route, Link, NavLink } = ReactRouterDOM;
+        const { useState, useEffect } = React;
+
+        // 1. Navbar: Menú de navegación que no recarga la página
+        const Navbar = () => {
+            return (
+                <nav className="navbar navbar-expand-lg mb-4">
+                    <div className="container">
+                        <Link className="navbar-brand" to="/">🌎 InfoPaíses</Link>
+                        <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                            <span className="navbar-toggler-icon"></span>
+                        </button>
+                        <div className="collapse navbar-collapse" id="navbarNav">
+                            <ul className="navbar-nav ms-auto gap-1">
+                                <li className="nav-item">
+                                    <NavLink className="nav-link px-3" activeClassName="active" exact to="/">Inicio</NavLink>
+                                </li>
+                                <li className="nav-item">
+                                    <NavLink className="nav-link px-3" activeClassName="active" to="/countries">Países</NavLink>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </nav>
+            );
+        };
+
+        // 2. Home: Página de bienvenida simple
+        const Home = () => {
+            return (
+                <div className="container mt-4">
+                    <section className="row align-items-center g-4">
+                        <div className="col-12 col-md-6">
+                            <h1 className="hero-title">Explora datos de países</h1>
+                            <p className="text-muted">Nombres, capitales, banderas y población a un clic.</p>
+                            <div className="d-flex flex-wrap gap-2 mt-3">
+                                <Link to="/countries" className="btn btn-primary btn-lg">Explorar países</Link>
+                            </div>
+                        </div>
+                        <div className="col-12 col-md-6">
+                            <div className="row g-3">
+                                <div className="col-12">
+                                    <div className="card">
+                                        <img src="https://placehold.co/800x360/EEE/333?text=Pa%C3%ADses" className="card-img-top" alt="Países" />
+                                        <div className="card-body">
+                                            <h5 className="card-title">Visualización por tarjetas</h5>
+                                            <p className="card-text">Búsqueda por nombre con resultados en tarjetas.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="col-12 col-md-6">
+                                    <div className="card">
+                                        <div className="card-body">
+                                            <h6 className="card-title">Datos clave</h6>
+                                            <p className="card-text">Capital y población en una vista limpia.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="col-12 col-md-6">
+                                    <div className="card">
+                                        <div className="card-body">
+                                            <h6 className="card-title">Banderas</h6>
+                                            <p className="card-text">Miniaturas ordenadas y fáciles de leer.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            );
+        };
+
+        // 3. Countries: Página principal con lógica de datos
+        const Countries = () => {
+            // Estados para guardar los datos, carga y búsqueda
+            const [countries, setCountries] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [searchTerm, setSearchTerm] = useState('');
+
+            // useEffect: Se ejecuta al inicio para descargar los datos de la API
+            useEffect(() => {
+                fetch('https://restcountries.com/v3.1/all?fields=name,translations,flags,capital,population')
+                    .then(res => res.json())
+                    .then(data => {
+                        setCountries(data); // Guardamos los países
+                        setLoading(false);  // Terminamos la carga
+                    })
+                    .catch(err => {
+                        console.error("Error:", err);
+                        setLoading(false);
+                    });
+            }, []);
+
+            const norm = (s) => {
+                let t = String(s || '');
+                if (typeof t.normalize === 'function') t = t.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                return t.toLowerCase();
+            };
+            const q = norm(searchTerm);
+            const filteredCountries = countries.filter(country => {
+                const es = norm(country.translations?.spa?.common || '');
+                const en = norm(country.name?.common || '');
+                const off = norm(country.name?.official || '');
+                return es.includes(q) || en.includes(q) || off.includes(q);
+            });
+
+            // Mostramos un spinner si está cargando
+            if (loading) {
+                return (
+                    <div className="container text-center py-5">
+                        <div className="spinner-border text-primary" role="status">
+                            <span className="visually-hidden">Cargando...</span>
+                        </div>
+                        <p className="mt-2">Cargando datos...</p>
+                    </div>
+                );
+            }
+
+            // Renderizamos la lista de tarjetas
+            return (
+                <div className="container mt-3">
+                    <h2 className="text-center mb-4">Países</h2>
+
+                    <div className="row justify-content-center mb-3">
+                        <div className="col-md-8">
+                            <input
+                                type="text"
+                                className="form-control form-control-lg"
+                                placeholder="Buscar país"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    <ul className="list-group">
+                        {filteredCountries.map((country, index) => (
+                            <li className="list-group-item d-flex align-items-center" key={index}>
+                                {country.flags?.png && (
+                                    <img src={country.flags.png} alt={country.name.common} className="flag me-3" />
+                                )}
+                                <div className="flex-grow-1">
+                                    <div className="fw-semibold">{country.translations?.spa?.common || country.name.common}</div>
+                                    <div className="text-muted small">
+                                        Capital: {country.capital ? country.capital.join(', ') : 'N/A'} • Población: {country.population.toLocaleString()}
+                                    </div>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+
+                    {filteredCountries.length === 0 && (
+                        <div className="alert alert-warning text-center mt-3">Sin resultados</div>
+                    )}
+                </div>
+            );
+        };
+
+        // 4. App: Configuración de Rutas (Navegación)
+        const App = () => {
+            return (
+                <HashRouter>
+                    <div className="d-flex flex-column min-vh-100">
+                        <Navbar />
+                        <main className="flex-grow-1 pb-5">
+                            <Switch>
+                                {/* Define qué componente mostrar según la URL */}
+                                <Route exact path="/" component={Home} />
+                                <Route path="/countries" component={Countries} />
+                            </Switch>
+                        </main>
+                        <footer className="bg-dark text-white text-center py-3 mt-auto">
+                            <div className="container">
+                                <p className="mb-0">&copy; 2025 InfoPaíses React. Hecho con ❤️</p>
+                            </div>
+                        </footer>
+                    </div>
+                </HashRouter>
+            );
+        };
+
+        // Montamos la aplicación en el div con id "root"
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
