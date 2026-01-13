@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Países</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+body{background:#f9fafb}
+.card-img-top{height:160px;object-fit:cover}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/react-bootstrap@2.10.2/dist/react-bootstrap.min.js"></script>
+<script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+<script type="text/babel">
+const {useState,useEffect}=React;
+const {Container,Row,Col,Card,Form}=ReactBootstrap;
+function App(){
+  const [countries,setCountries]=useState([]);
+  const [q,setQ]=useState('');
+  useEffect(()=>{
+    fetch('https://restcountries.com/v3.1/all?fields=name,flags,capital,currencies,languages,population').then(r=>r.json()).then(setCountries);
+  },[]);
+  const list=countries.filter(c=>((c.name&&c.name.common)||'').toLowerCase().includes(q.toLowerCase()));
+  return (
+    <Container className="py-4">
+      <Form.Control className="mb-3" placeholder="Buscar país" value={q} onChange={e=>setQ(e.target.value)} />
+      <Row>
+        {list.map((c,i)=>(
+          <Col key={i} xs={12} md={6} lg={4}>
+            <Card className="mb-3">
+              <Card.Img variant="top" src={(c.flags&&c.flags.png)||(c.flags&&c.flags.svg)||''} />
+              <Card.Body>
+                <Card.Title>{c.name&&c.name.common}</Card.Title>
+                <div>Capital: {Array.isArray(c.capital)?c.capital.join(', '):(c.capital||'')}</div>
+                <div>Población: {(c.population&&c.population.toLocaleString&&c.population.toLocaleString())||c.population}</div>
+              </Card.Body>
+            </Card>
+          </Col>
+        ))}
+      </Row>
+    </Container>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
