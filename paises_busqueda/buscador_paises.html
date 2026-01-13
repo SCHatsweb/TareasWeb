@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Países (Búsqueda)</title>
+  <style>
+    body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:#ffffff;margin:0;padding:24px;color:#111827}
+    h1{margin-top:0}
+    .box{max-width:980px;margin:0 auto}
+    .search{width:100%;padding:12px 14px;border:1px solid #e5e7eb;border-radius:12px;font-size:16px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}
+    .card{border:1px solid #e5e7eb;border-radius:14px;padding:14px;display:flex;gap:12px;align-items:center;box-shadow:0 8px 24px rgba(17,24,39,.06)}
+    .flag{width:48px;height:32px;object-fit:cover;border:1px solid #e5e7eb;border-radius:6px}
+    .title{font-weight:700}
+    .meta{color:#6b7280;font-size:14px}
+    .muted{color:#6b7280}
+  </style>
+</head>
+<body>
+  <h1>Países</h1>
+  <div class="box">
+    <input id="q" class="search" type="text" placeholder="Escribe el país (español o inglés)">
+    <div id="info"></div>
+  </div>
+
+<script>
+const API = 'https://restcountries.com/v3.1/all?fields=name,translations,flags,capital,population,region,subregion,area,languages,cca2,cca3,timezones';
+let countries = [];
+const FALLBACK = [
+  { name:{ common:'Mexico', official:'Estados Unidos Mexicanos' }, translations:{ spa:{ common:'México' } }, flags:{ png:'https://flagcdn.com/w320/mx.png' }, capital:['Ciudad de México'], population:126000000, region:'Americas', subregion:'Latin America', area:1964375, languages:{ spa:'Español' }, cca2:'MX', cca3:'MEX', timezones:['UTC-08:00','UTC-06:00','UTC-05:00'] },
+  { name:{ common:'Spain', official:'Reino de España' }, translations:{ spa:{ common:'España' } }, flags:{ png:'https://flagcdn.com/w320/es.png' }, capital:['Madrid'], population:47450795, region:'Europe', subregion:'Southern Europe', area:505990, languages:{ spa:'Español' }, cca2:'ES', cca3:'ESP', timezones:['UTC+01:00'] },
+  { name:{ common:'United States', official:'United States of America' }, translations:{ spa:{ common:'Estados Unidos' } }, flags:{ png:'https://flagcdn.com/w320/us.png' }, capital:['Washington, D.C.'], population:331000000, region:'Americas', subregion:'Northern America', area:9372610, languages:{ eng:'Inglés' }, cca2:'US', cca3:'USA', timezones:['UTC-05:00','UTC-06:00','UTC-07:00','UTC-08:00','UTC-09:00','UTC-10:00'] }
+];
+function nombreEs(c){
+  if (c.translations && c.translations.spa && c.translations.spa.common) return c.translations.spa.common;
+  if (c.name && c.name.common) return c.name.common;
+  return '';
+}
+function norm(s){
+  var t = String(s||'');
+  if (typeof t.normalize === 'function'){
+    t = t.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  } else {
+    var map = {
+      'á':'a','à':'a','ä':'a','â':'a','ã':'a','å':'a','Á':'A','À':'A','Ä':'A','Â':'A','Ã':'A','Å':'A',
+      'é':'e','è':'e','ë':'e','ê':'e','É':'E','È':'E','Ë':'E','Ê':'E',
+      'í':'i','ì':'i','ï':'i','î':'i','Í':'I','Ì':'I','Ï':'I','Î':'I',
+      'ó':'o','ò':'o','ö':'o','ô':'o','õ':'o','Ó':'O','Ò':'O','Ö':'O','Ô':'O','Õ':'O',
+      'ú':'u','ù':'u','ü':'u','û':'u','Ú':'U','Ù':'U','Ü':'U','Û':'U',
+      'ñ':'n','Ñ':'N'
+    };
+    t = t.replace(/[ÁÀÄÂÃÅáàäâãåÉÈËÊéèëêÍÌÏÎíìïîÓÒÖÔÕóòöôõÚÙÜÛúùüûÑñ]/g, function(ch){ return map[ch] || ch; });
+  }
+  return t.toLowerCase();
+}
+function mapV2(arr){
+  var out = [];
+  for (var i=0;i<arr.length;i++){
+    var c = arr[i] || {};
+    var langs = {};
+    var ls = c.languages || [];
+    if (Array.isArray(ls)){
+      for (var j=0;j<ls.length;j++){ var ln = ls[j] && ls[j].name ? ls[j].name : ''; if (ln) langs[ln] = ln; }
+    }
+    out.push({
+      name: { common: c.name || '', official: c.name || '' },
+      translations: {},
+      flags: { svg: c.flag || '' },
+      capital: Array.isArray(c.capital)? c.capital : (c.capital? [c.capital] : []),
+      population: c.population || 0,
+      region: c.region || '',
+      subregion: c.subregion || '',
+      area: c.area || 0,
+      languages: langs,
+      cca2: c.alpha2Code || '',
+      cca3: c.alpha3Code || '',
+      timezones: c.timezones || []
+    });
+  }
+  return out;
+}
+var remoteTimer = null;
+function remoteSearch(q){
+  if (!q || q.length < 2) return;
+  if (remoteTimer) clearTimeout(remoteTimer);
+  remoteTimer = setTimeout(function(){
+    var url = 'https://restcountries.com/v3.1/name/' + encodeURIComponent(q) + '?fields=name,translations,flags,capital,population,region,subregion,area,languages,cca2,cca3,timezones';
+    fetch(url).then(function(r){ return r.json(); }).then(function(d){
+      if (Array.isArray(d) && d.length){ countries = d; applyFilter(); }
+    }).catch(function(){});
+  }, 300);
+}
+function loadCountries(){
+  var urls = [
+    'https://restcountries.com/v3.1/all?fields=name,translations,flags,capital,population,region,subregion,area,languages,cca2,cca3,timezones',
+    'https://restcountries.com/v3.1/all',
+    'https://restcountries.com/v2/all'
+  ];
+  function next(i){
+    if (i>=urls.length){ applyFilter(); return; }
+    fetch(urls[i]).then(function(r){ return r.json(); }).then(function(d){
+      if (!Array.isArray(d) || d.length===0){ next(i+1); return; }
+      countries = (i===2) ? mapV2(d) : d;
+      applyFilter();
+    }).catch(function(){ next(i+1); });
+  }
+  next(0);
+}
+function esc(s){ if (s==null) return ''; return String(s).replace(/[&<>"'\/]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;'}[c])); }
+function renderCards(lista){
+  var info = document.getElementById('info');
+  if (!lista || !lista.length){ info.innerHTML = '<p class="muted">Sin resultados</p>'; return; }
+  var html = '<div class="grid">';
+  for (var i=0;i<lista.length;i++){
+    var c = lista[i];
+    var flag = esc(c.flags && (c.flags.png||c.flags.svg)? (c.flags.png||c.flags.svg): '');
+    var name = esc(nombreEs(c));
+    var off = esc(c.name && c.name.official ? c.name.official : '');
+    var cap = esc((c.capital && c.capital.length)? c.capital.join(', '): '');
+    var pop = (c.population||0).toLocaleString();
+    var reg = esc(c.region||'');
+    var sub = esc(c.subregion||'');
+    var cca2 = esc(c.cca2||'');
+    var cca3 = esc(c.cca3||'');
+    var langs = c.languages? esc(Object.values(c.languages).join(', ')) : '';
+    var tz = (c.timezones||[]).join(', ');
+    html += '<div class="card">'+
+      (flag? '<img class="flag" src="'+flag+'" alt="flag">':'')+
+      '<div><div class="title">'+name+'</div>'+ 
+      '<div class="meta">Oficial: '+off+' • Capital: '+cap+' • Región: '+reg+'</div>'+ 
+      '<div class="meta">CCA2: '+cca2+' • CCA3: '+cca3+' • Área: '+(c.area||0).toLocaleString()+'</div>'+ 
+      '<div class="meta">Idiomas: '+langs+' • Husos: '+esc(tz)+'</div>'+ 
+      '<div class="meta">Población: '+pop+'</div></div></div>';
+  }
+  html += '</div>';
+  info.innerHTML = html;
+}
+function applyFilter(){
+  var qEl = document.getElementById('q');
+  var q = qEl ? qEl.value.trim() : '';
+  remoteSearch(q);
+  var lista = countries.slice();
+  lista.sort(function(a,b){
+    var na = norm(nombreEs(a));
+    var nb = norm(nombreEs(b));
+    if (na < nb) return -1; if (na > nb) return 1; return 0;
+  });
+  if (q){
+    var qn = norm(q);
+    lista = lista.filter(function(c){
+      var nEs = norm(nombreEs(c));
+      var nEn = norm(c.name&&c.name.common? c.name.common: '');
+      var nOff = norm(c.name && c.name.official ? c.name.official : '');
+      var cap = norm(Array.isArray(c.capital)? c.capital.join(', ') : (c.capital||''));
+      var reg = norm(c.region||'');
+      var code = norm((c.cca2||'') + ' ' + (c.cca3||''));
+      return (
+        nEs.indexOf(qn)!==-1 ||
+        nEn.indexOf(qn)!==-1 ||
+        nOff.indexOf(qn)!==-1 ||
+        cap.indexOf(qn)!==-1 ||
+        reg.indexOf(qn)!==-1 ||
+        code.indexOf(qn)!==-1
+      );
+    });
+  }
+  renderCards(lista);
+}
+document.getElementById('q').addEventListener('input', applyFilter);
+// Mensaje inicial de carga
+document.getElementById('info').innerHTML = '<p class="muted">Cargando países...</p>';
+countries = FALLBACK;
+applyFilter();
+
+fetch(API)
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    countries = Array.isArray(data)? data: [];
+    applyFilter();
+  })
+  .catch(function(err){
+    console.error('Error cargando países:', err);
+    document.getElementById('info').innerHTML = '<div class="muted">Sin conexión a la API: mostrando datos de ejemplo.</div>';
+    applyFilter();
+  });
+loadCountries();
+</script>
+</body>
+</html>
