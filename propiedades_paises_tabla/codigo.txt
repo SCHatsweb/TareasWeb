@@ -1,0 +1,39 @@
+import React from 'react';
+
+const MultiplicationTable = ({ base, limit }) => {
+  const b = Number(base);
+  const l = Number(limit);
+
+  if (!Number.isFinite(b) || !Number.isFinite(l) || b <= 0 || l <= 0) {
+    return <div className="alert alert-danger">Proporcione números positivos</div>;
+  }
+
+  const rows = Array.from({ length: Math.floor(l) }, (_, i) => i + 1);
+
+  return (
+    <div className="container my-3">
+      <div className="d-flex align-items-center mb-2">
+        <span className="badge bg-secondary me-2">x{Math.floor(b)}</span>
+        <h3 className="mb-0">Tabla de multiplicar</h3>
+      </div>
+      <table className="table table-bordered table-sm">
+        <thead>
+          <tr>
+            <th>Operación</th>
+            <th className="text-end">Resultado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((n) => (
+            <tr key={n}>
+              <td>{Math.floor(b)} × {n}</td>
+              <td className="text-end">{Math.floor(b) * n}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+export default MultiplicationTable;
